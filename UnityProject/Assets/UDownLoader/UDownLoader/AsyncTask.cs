@@ -49,6 +49,12 @@ namespace ThisisGame
 
         public void Release()
         {
+            if(responseStream!=null)
+            {
+                responseStream.Close();
+                responseStream.Dispose();
+            }
+
             if(httpWebRequest!=null)
             {
                 httpWebRequest.Abort();

@@ -11,11 +11,21 @@ namespace ThisisGame
 {
     public class UDownLoader
     {
+        public Action<string, long, long> OnDownLoadProgress;
+
+        public Action<string, string> OnDownLoadCompleted;
+
+        public Action<string, Exception> OnDownLoadFailed;
+
+        AsyncTask asyncTask = null;
+
+
         /// <summary>
         /// 
         /// </summary>
         public UDownLoader()
         {
+            asyncTask = new AsyncTask();
         }
 
         /// <summary>
@@ -27,14 +37,13 @@ namespace ThisisGame
         {
             Debug.Log("DownLoadAsync url=" + url + " isText=" + isText);
 
+            
+            asyncTask.url = url;
+            asyncTask.isText = isText;
+            asyncTask.asyncTaskState = AsyncTaskState.Prepare;
+
             try
             {
-
-                AsyncTask asyncTask = new AsyncTask();
-                asyncTask.url = url;
-                asyncTask.isText = isText;
-                asyncTask.asyncTaskState = AsyncTaskState.Prepare;
-
                 HttpWebRequest httpWebRequest = WebRequest.Create(url) as HttpWebRequest;
 
                 asyncTask.httpWebRequest = httpWebRequest;
@@ -45,10 +54,14 @@ namespace ThisisGame
             {
                 Debug.LogException(ex);
 
+                asyncTask.asyncTaskState = AsyncTaskState.Failed;
+
             }
             catch (Exception ex)
             {
                 Debug.LogException(ex);
+
+                asyncTask.asyncTaskState = AsyncTaskState.Failed;
             }
         }
 
@@ -75,10 +88,14 @@ namespace ThisisGame
             catch (WebException exp)
             {
                 Debug.LogError(exp.ToString());
+
+                asyncTask.asyncTaskState = AsyncTaskState.Failed;
             }
             catch (Exception exp)
             {
                 Debug.LogError(exp.ToString());
+
+                asyncTask.asyncTaskState = AsyncTaskState.Failed;
             }
         }
 
@@ -86,20 +103,89 @@ namespace ThisisGame
         {
             Debug.Log("ReadCallBack");
             AsyncTask asyncTask = result.AsyncState as AsyncTask;
+
+            Stream responseStream = asyncTask.responseStream;
+
+            try
+            {
+                int read = responseStream.EndRead(result);
+
+                Debug.Log("read size = " + read);
+
+                if (read > 0)
+                {
+                    if (asyncTask.isText)
+                    {
+                        asyncTask.requestData.Append(System.Text.Encoding.Default.GetString(asyncTask.bufferRead));
+                    }
+                    else
+                    {
+                        //write file
+                    }
+
+                    asyncTask.bufferRead = new byte[AsyncTask.bufferSize];
+                    responseStream.BeginRead(asyncTask.bufferRead, 0, AsyncTask.bufferSize, new AsyncCallback(ReadCallBack), asyncTask);
+
+                }
+                else
+                {
+                    asyncTask.asyncTaskState = AsyncTaskState.Complete;
+                }
+            }
+            catch(WebException exp)
+            {
+                Debug.LogError(exp.ToString());
+
+                asyncTask.asyncTaskState = AsyncTaskState.Failed;
+            }
+            catch(Exception exp)
+            {
+                Debug.LogError(exp.ToString());
+
+                asyncTask.asyncTaskState = AsyncTaskState.Failed;
+            }
         }
 
         public void Release()
         {
-
+            if(asyncTask!=null)
+            {
+                asyncTask.Release();
+            }
         }
 
 
         public void Update()
         {
+            if (asyncTask != null)
+            {
+                switch(asyncTask.asyncTaskState)
+                {
+                    case AsyncTaskState.DownLoading:
+                        {
+                            if (asyncTask.totalBytes > 0)
+                            {
+                                OnDownLoadProgress(asyncTask.url, asyncTask.receivedBytes, asyncTask.totalBytes);
+                            }
+                        }
+                        break;
+                    case AsyncTaskState.Complete:
+                        {
+                            OnDownLoadCompleted(asyncTask.url, asyncTask.requestData.ToString());
 
+                            asyncTask.asyncTaskState = AsyncTaskState.None;
+                        }
+                        break;
+                    case AsyncTaskState.Failed:
+                        {
+                            OnDownLoadFailed(asyncTask.url, asyncTask.exception);
+
+                            asyncTask.asyncTaskState = AsyncTaskState.None;
+                        }
+                        break;
+                }
+            }
         }
-
-
     }
 
 }

@@ -10,7 +10,7 @@ namespace ThisisGame
         None,
         Prepare,
         DownLoading,
-        Error,
+        Failed,
         Complete
     }
 }
