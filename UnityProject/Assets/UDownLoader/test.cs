@@ -20,7 +20,9 @@ public class test : MonoBehaviour
         downLoader = new UDownLoader();
         downLoader.OnDownLoadProgress = (url,receivedBytes,totalBytes) => 
         {
-            progressSlider.value = (float)receivedBytes / totalBytes;
+            float progress = (float)receivedBytes / totalBytes;
+            //Debug.Log("OnDownLoadProgress "+ progress);
+            progressSlider.value = progress;
         };
 
         downLoader.OnDownLoadFailed = (url,exception) => 
@@ -35,7 +37,7 @@ public class test : MonoBehaviour
             progressSlider.value = 1;
         };
 
-        downLoader.DownLoadAsync("http://shcdn.igamesofficial.com/snk/AssetbundleUpdate/A20_zhubao/version.txt", true);
+        downLoader.DownLoadAsync("http://thisisgame.com.cn/uuu.zip", "./uuu.zip", false);
     }
 
     // Update is called once per frame

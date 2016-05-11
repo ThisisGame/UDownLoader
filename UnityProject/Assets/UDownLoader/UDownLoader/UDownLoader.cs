@@ -17,6 +17,8 @@ namespace ThisisGame
 
         public Action<string, Exception> OnDownLoadFailed;
 
+        FileStream fileStream = null;
+
         AsyncTask asyncTask = null;
 
 
@@ -32,19 +34,27 @@ namespace ThisisGame
         /// DownLoad Async
         /// </summary>
         /// <param name="url">url to download</param>
+        /// <param name="url">filepath to save</param>
         /// /// <param name="url">is Text or not</param>
-        public void DownLoadAsync(string url, bool isText = false)
+        public void DownLoadAsync(string url,string savepath, bool isText = false)
         {
             Debug.Log("DownLoadAsync url=" + url + " isText=" + isText);
 
-            
             asyncTask.url = url;
             asyncTask.isText = isText;
             asyncTask.asyncTaskState = AsyncTaskState.Prepare;
 
+            //createfile
+            if (!isText)
+            {
+                fileStream = new FileStream(savepath, FileMode.Append);
+            }
+
+
             try
             {
                 HttpWebRequest httpWebRequest = WebRequest.Create(url) as HttpWebRequest;
+                httpWebRequest.AddRange((int)fileStream.Length);
 
                 asyncTask.httpWebRequest = httpWebRequest;
 
@@ -82,6 +92,7 @@ namespace ThisisGame
                 asyncTask.asyncTaskState = AsyncTaskState.DownLoading;
                 asyncTask.httpWebResponse = httpWebResponse;
                 asyncTask.responseStream = responseStream;
+                asyncTask.totalBytes = httpWebResponse.ContentLength;
 
                 responseStream.BeginRead(asyncTask.bufferRead, 0, AsyncTask.bufferSize, new AsyncCallback(ReadCallBack), asyncTask);
             }
@@ -101,7 +112,7 @@ namespace ThisisGame
 
         private void ReadCallBack(IAsyncResult result)
         {
-            Debug.Log("ReadCallBack");
+            //Debug.Log("ReadCallBack");
             AsyncTask asyncTask = result.AsyncState as AsyncTask;
 
             Stream responseStream = asyncTask.responseStream;
@@ -110,10 +121,13 @@ namespace ThisisGame
             {
                 int read = responseStream.EndRead(result);
 
-                Debug.Log("read size = " + read);
+                //Debug.Log("read size = " + read);
 
                 if (read > 0)
                 {
+                    asyncTask.receivedBytes += read;
+
+
                     if (asyncTask.isText)
                     {
                         asyncTask.requestData.Append(System.Text.Encoding.Default.GetString(asyncTask.bufferRead));
@@ -121,6 +135,8 @@ namespace ThisisGame
                     else
                     {
                         //write file
+                        fileStream.Write(asyncTask.bufferRead,0,asyncTask.bufferRead.Length);
+                        fileStream.Flush();
                     }
 
                     asyncTask.bufferRead = new byte[AsyncTask.bufferSize];
@@ -130,6 +146,7 @@ namespace ThisisGame
                 else
                 {
                     asyncTask.asyncTaskState = AsyncTaskState.Complete;
+                    fileStream.Close();
                 }
             }
             catch(WebException exp)
@@ -137,12 +154,14 @@ namespace ThisisGame
                 Debug.LogError(exp.ToString());
 
                 asyncTask.asyncTaskState = AsyncTaskState.Failed;
+                fileStream.Close();
             }
             catch(Exception exp)
             {
                 Debug.LogError(exp.ToString());
 
                 asyncTask.asyncTaskState = AsyncTaskState.Failed;
+                fileStream.Close();
             }
         }
 
