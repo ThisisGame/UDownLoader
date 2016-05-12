@@ -37,7 +37,7 @@ public class test : MonoBehaviour
             progressSlider.value = 1;
         };
 
-        downLoader.DownLoadAsync("http://thisisgame.com.cn/uuu.zip", "./uuu.zip", false);
+        downLoader.DownLoadAsync("http://www.thisisgame.com.cn/uuu.zip", "./uuu.zip", false);
     }
 
     // Update is called once per frame

@@ -53,6 +53,7 @@ namespace ThisisGame
             {
                 responseStream.Close();
                 responseStream.Dispose();
+                responseStream = null;
             }
 
             if(httpWebRequest!=null)

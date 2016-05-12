@@ -60,18 +60,20 @@ namespace ThisisGame
 
                 httpWebRequest.BeginGetResponse(new AsyncCallback(ResponseCallback), asyncTask);
             }
-            catch (WebException ex)
+            catch (WebException exp)
             {
-                Debug.LogException(ex);
+                Debug.LogError("DownLoadAsync exception="+exp);
 
                 asyncTask.asyncTaskState = AsyncTaskState.Failed;
+                asyncTask.exception = exp;
 
             }
-            catch (Exception ex)
+            catch (Exception exp)
             {
-                Debug.LogException(ex);
+                Debug.LogError("DownLoadAsync exception=" + exp);
 
                 asyncTask.asyncTaskState = AsyncTaskState.Failed;
+                asyncTask.exception = exp;
             }
         }
 
@@ -98,15 +100,30 @@ namespace ThisisGame
             }
             catch (WebException exp)
             {
-                Debug.LogError(exp.ToString());
+                httpWebResponse = exp.Response as HttpWebResponse;
+                switch (httpWebResponse.StatusCode)
+                {
+                    case HttpStatusCode.RequestedRangeNotSatisfiable:
+                        {
+                            asyncTask.asyncTaskState = AsyncTaskState.Complete;
+ 
+                            return;
+                        }
+                        break;
+                }
+                Debug.LogError("ResponseCallback exception=" + exp.ToString());
 
                 asyncTask.asyncTaskState = AsyncTaskState.Failed;
+
+                asyncTask.exception = exp;
             }
             catch (Exception exp)
             {
                 Debug.LogError(exp.ToString());
 
                 asyncTask.asyncTaskState = AsyncTaskState.Failed;
+
+                asyncTask.exception = exp;
             }
         }
 
@@ -135,7 +152,7 @@ namespace ThisisGame
                     else
                     {
                         //write file
-                        fileStream.Write(asyncTask.bufferRead,0,asyncTask.bufferRead.Length);
+                        fileStream.Write(asyncTask.bufferRead,0,read);
                         fileStream.Flush();
                     }
 
@@ -146,7 +163,6 @@ namespace ThisisGame
                 else
                 {
                     asyncTask.asyncTaskState = AsyncTaskState.Complete;
-                    fileStream.Close();
                 }
             }
             catch(WebException exp)
@@ -154,22 +170,29 @@ namespace ThisisGame
                 Debug.LogError(exp.ToString());
 
                 asyncTask.asyncTaskState = AsyncTaskState.Failed;
-                fileStream.Close();
+                asyncTask.exception = exp;
             }
             catch(Exception exp)
             {
                 Debug.LogError(exp.ToString());
 
                 asyncTask.asyncTaskState = AsyncTaskState.Failed;
-                fileStream.Close();
+                asyncTask.exception = exp;
             }
         }
 
         public void Release()
         {
-            if(asyncTask!=null)
+            if (asyncTask != null)
             {
                 asyncTask.Release();
+            }
+
+            if (fileStream != null)
+            {
+                fileStream.Flush();
+                fileStream.Close();
+                fileStream = null;
             }
         }
 
@@ -185,6 +208,7 @@ namespace ThisisGame
                             if (asyncTask.totalBytes > 0)
                             {
                                 OnDownLoadProgress(asyncTask.url, asyncTask.receivedBytes, asyncTask.totalBytes);
+
                             }
                         }
                         break;
@@ -193,6 +217,8 @@ namespace ThisisGame
                             OnDownLoadCompleted(asyncTask.url, asyncTask.requestData.ToString());
 
                             asyncTask.asyncTaskState = AsyncTaskState.None;
+
+                            Release();
                         }
                         break;
                     case AsyncTaskState.Failed:
@@ -200,6 +226,8 @@ namespace ThisisGame
                             OnDownLoadFailed(asyncTask.url, asyncTask.exception);
 
                             asyncTask.asyncTaskState = AsyncTaskState.None;
+
+                            Release();
                         }
                         break;
                 }
