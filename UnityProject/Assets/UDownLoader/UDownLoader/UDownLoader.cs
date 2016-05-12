@@ -31,12 +31,31 @@ namespace ThisisGame
         }
 
         /// <summary>
+        /// DownLoadFileAsync
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="savepath"></param>
+        public void DownLoadFileAsync(string url, string savepath)
+        {
+            DownLoadAsync(url, false, savepath);
+        }
+
+        /// <summary>
+        /// DownLoadStringAsync
+        /// </summary>
+        /// <param name="url"></param>
+        public void DownLoadStringAsync(string url)
+        {
+            DownLoadAsync(url, true);
+        }
+
+        /// <summary>
         /// DownLoad Async
         /// </summary>
         /// <param name="url">url to download</param>
         /// <param name="url">filepath to save</param>
         /// /// <param name="url">is Text or not</param>
-        public void DownLoadAsync(string url,string savepath, bool isText = false)
+        private void DownLoadAsync(string url, bool isText = false,string savepath="")
         {
             Debug.Log("DownLoadAsync url=" + url + " isText=" + isText);
 
@@ -54,7 +73,11 @@ namespace ThisisGame
             try
             {
                 HttpWebRequest httpWebRequest = WebRequest.Create(url) as HttpWebRequest;
-                httpWebRequest.AddRange((int)fileStream.Length);
+                if (!isText)
+                {
+                    httpWebRequest.AddRange((int)fileStream.Length);
+                }
+                    
 
                 asyncTask.httpWebRequest = httpWebRequest;
 
